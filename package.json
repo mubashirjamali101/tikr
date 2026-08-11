@@ -13,7 +13,7 @@
     "cli"
   ],
   "license": "MIT",
-  "author": "Mubashir Jamali <mubashirjamali101@gmail.com>",
+  "author": "Mubashir Jamali <mubashirjamali101@gmail.com> (https://mubashirjamali.com/en/open-source/tikr)",
   "type": "module",
   "engines": {
     "node": ">=18"
@@ -46,7 +46,7 @@
     "type": "git",
     "url": "git+https://github.com/mubashirjamali101/tikr.git"
   },
-  "homepage": "https://github.com/mubashirjamali101/tikr",
+  "homepage": "https://mubashirjamali.com/en/open-source/tikr",
   "bugs": {
     "url": "https://github.com/mubashirjamali101/tikr/issues",
     "email": "mubashirjamali101@gmail.com"

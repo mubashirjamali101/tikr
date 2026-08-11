@@ -24,6 +24,15 @@ usage locally (Cursor accounts it server-side; Antigravity's state is schema-les
 they are listed as untrackable rather than guessed at. `docs/PROVIDERS.md` has the evidence and
 explains how to add one.
 
+
+## Screenshots
+
+![tikr dashboard](docs/screenshots/dashboard.png)
+
+![tikr stats](docs/screenshots/stats.png)
+
+Portfolio: **[mubashirjamali.com/en/open-source/tikr](https://mubashirjamali.com/en/open-source/tikr)** · [How I built it](https://mubashirjamali.com/en/writing/building-tikr-with-claude-code)
+
 ## Install
 
 Requires Node.js 18 or newer. There are no runtime dependencies, so the install is the package and
