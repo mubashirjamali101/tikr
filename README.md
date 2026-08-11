@@ -37,26 +37,28 @@ Portfolio: **[mubashirjamali.com/en/open-source/tikr](https://mubashirjamali.com
 
 ## Install
 
-Requires Node.js 18 or newer. There are no runtime dependencies, so the install is the package and
-nothing else.
+**macOS / Linux** — one line (no Node required for the binary):
 
 ```bash
-npm install -g tikr
+curl -fsSL https://raw.githubusercontent.com/mubashirjamali101/tikr/main/install.sh | bash
 ```
 
-Works the same on macOS, Linux and Windows; every release is packed, installed and run on all three
-in CI before it ships.
+**Windows (PowerShell)**:
 
-If your shell says the command is not found immediately after installing, it is caching an older
-`PATH`: run `rehash` in zsh or `hash -r` in bash, or just open a new terminal. With zsh's `autocd`
-on you may instead find yourself moved into a directory of the same name, which is the same cause. On Windows use PowerShell or Command Prompt, not WSL, if you want it to see
-the Claude Code data written by your Windows install.
+```powershell
+irm https://raw.githubusercontent.com/mubashirjamali101/tikr/main/install.ps1 | iex
+```
+
+Press Enter if prompted. That downloads the standalone binary for your platform and puts `tikr`
+on your `PATH`. Binaries for macOS (arm64/x64), Linux (x64/arm64) and Windows (x64) ship on every
+[release](../../releases).
 
 <details>
 <summary>Other ways to install</summary>
 
 ```bash
-pnpm add -g tikr        # pnpm
+npm install -g tikr     # Node ≥ 20
+pnpm add -g tikr
 npx tikr stats          # no install, one command
 ```
 
@@ -65,11 +67,8 @@ From source:
 ```bash
 git clone <this repo> && cd tikr
 pnpm install && pnpm run build && npm link
+# or: ./build.sh && ./install.sh
 ```
-
-There are no prebuilt standalone binaries. Bundling a Node runtime per platform would add tens of
-megabytes and a cross-compilation step to a tool whose users already have Node, because Claude Code
-needs it too.
 
 </details>
 

@@ -1,0 +1,69 @@
+name: Release
+
+# Cut a release:  git tag v1.0.0 && git push origin v1.0.0
+# Compiles standalone binaries for macOS, Windows and Linux.
+on:
+  push:
+    tags: ["v*"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+
+      - name: Check the tag matches package.json
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "v$version" ]; then
+            echo "Tag $TAG does not match package.json version $version" >&2
+            exit 1
+          fi
+
+      - name: Build binaries for every platform
+        run: chmod +x build.sh && ./build.sh
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            ## Install (one step)
+
+            **macOS / Linux**
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/mubashirjamali101/tikr/main/install.sh | bash
+            ```
+
+            **Windows (PowerShell)**
+            ```powershell
+            irm https://raw.githubusercontent.com/mubashirjamali101/tikr/main/install.ps1 | iex
+            ```
+
+            Or download the binary for your platform below, `chmod +x`, and put it on your `PATH`.
