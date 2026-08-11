@@ -1,5 +1,7 @@
 # tikr
 
+![Open Graph preview](docs/social.png)
+
 Track your AI coding tool token usage. One command starts a background service that watches each
 tool's own local session files and records how many tokens you used, per tool, per model, per day,
 per project.
