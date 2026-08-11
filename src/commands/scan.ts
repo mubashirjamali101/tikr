@@ -1,7 +1,7 @@
 import { commit } from '../core/commit.js'
 import { emptyResult } from '../core/ingest.js'
 import { scanAll } from '../core/scan.js'
-import { describeReset, loadState } from '../core/state.js'
+import { describeReset, loadState, saveState } from '../core/state.js'
 import { type Args, flagBool } from '../util/args.js'
 
 /**
@@ -27,9 +27,12 @@ export function runScan(args: Args): number {
   if (dryRun) {
     result = scanAll(state, { seedOnly: noBackfill })
   } else {
-    commit(state, 'transcript', (draft) => {
+    // commit only writes when usage or file offsets change. An empty scan still updates
+    // lastScanAt, and a fresh install must leave a durable state.json behind.
+    const wrote = commit(state, 'transcript', (draft) => {
       result = scanAll(draft, { seedOnly: noBackfill })
     })
+    if (wrote === null) saveState(state)
   }
 
   const elapsed = Date.now() - started
