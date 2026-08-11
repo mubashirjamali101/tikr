@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "tikr configuration",
+  "description": "Optional defaults, ~/.tikr/config.json. A command-line flag always wins over this file. Only options that already exist as flags belong here.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "defaults": {
+      "description": "Applied to every command.",
+      "$ref": "#/definitions/options"
+    },
+    "commands": {
+      "description": "Applied to one command, overriding defaults.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/options" }
+    },
+    "projects": {
+      "description": "Display names for project buckets, keyed by the encoded directory name or by the shortened name the report would otherwise print.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "definitions": {
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "by": {
+          "type": "string",
+          "enum": ["model", "provider", "day", "week", "month", "project", "block", "hour"]
+        },
+        "last": { "type": "integer", "minimum": 0, "description": "Periods to include. 0 means all." },
+        "since": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "until": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "week-start": { "type": "string", "enum": ["monday", "sunday"] },
+        "block-hours": { "type": "integer", "minimum": 1 },
+        "interval": { "type": "integer", "minimum": 1 },
+        "otlp-port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "json": { "type": "boolean" },
+        "csv": { "type": "boolean" },
+        "no-scan": { "type": "boolean" },
+        "verbose": { "type": "boolean" }
+      }
+    }
+  }
+}
