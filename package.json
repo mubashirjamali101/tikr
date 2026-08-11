@@ -16,7 +16,7 @@
   "author": "Mubashir Jamali <mubashirjamali101@gmail.com> (https://mubashirjamali.com/en/open-source/tikr)",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "bin": {
     "tikr": "dist/cli.js"

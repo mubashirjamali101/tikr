@@ -14,7 +14,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        node: ['18', '22']
+        # Vitest 3 / rolldown need Node 20+ (node:util.styleText).
+        node: ['20', '22']
 
     steps:
       - uses: actions/checkout@v4
