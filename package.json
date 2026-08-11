@@ -40,7 +40,7 @@
     "@biomejs/biome": "^1.9.4",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^3.2.7"
   },
   "repository": {
     "type": "git",
@@ -50,5 +50,12 @@
   "bugs": {
     "url": "https://github.com/mubashirjamali101/tikr/issues",
     "email": "security@mubashirjamali.com"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": ">=6.4.3",
+      "esbuild": ">=0.25.0",
+      "vitest": ">=3.2.6"
+    }
   }
 }
