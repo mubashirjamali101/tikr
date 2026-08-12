@@ -54,20 +54,12 @@ on your `PATH`. Binaries for macOS (arm64/x64), Linux (x64/arm64) and Windows (x
 [release](../../releases).
 
 <details>
-<summary>Other ways to install</summary>
+<summary>From source (development)</summary>
 
 ```bash
-npm install -g tikr     # Node ≥ 20
-pnpm add -g tikr
-npx tikr stats          # no install, one command
-```
-
-From source:
-
-```bash
-git clone <this repo> && cd tikr
-pnpm install && pnpm run build && npm link
-# or: ./build.sh && ./install.sh
+git clone https://github.com/mubashirjamali101/tikr.git && cd tikr
+pnpm install && pnpm run build
+# or: ./build.sh && YES=1 ./install.sh
 ```
 
 </details>
