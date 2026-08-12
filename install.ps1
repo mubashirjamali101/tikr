@@ -19,7 +19,8 @@ if (-not $env:YES) {
 New-Item -ItemType Directory -Force -Path $destDir | Out-Null
 
 $repoDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
-$local = Join-Path $repoDir "dist\$bin"
+$local = Join-Path $repoDir "release\$bin"
+if (-not (Test-Path $local)) { $local = Join-Path $repoDir "dist\$bin" }
 
 if (Test-Path $local) {
     Copy-Item $local $dest -Force

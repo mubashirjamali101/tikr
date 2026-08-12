@@ -46,7 +46,10 @@ mkdir -p "$dest_dir" 2>/dev/null || true
 
 tmp=""
 src=""
-if [ -n "$REPO_DIR" ] && [ -f "$REPO_DIR/dist/$bin" ]; then
+if [ -n "$REPO_DIR" ] && [ -f "$REPO_DIR/release/$bin" ]; then
+  src="$REPO_DIR/release/$bin"
+elif [ -n "$REPO_DIR" ] && [ -f "$REPO_DIR/dist/$bin" ]; then
+  # legacy path if someone still has an old local build
   src="$REPO_DIR/dist/$bin"
 else
   base="${TIKR_DOWNLOAD_BASE:-}"
