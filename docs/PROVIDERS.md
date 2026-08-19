@@ -25,6 +25,7 @@ Checked against real installations on 2026-08-11.
 | Cursor | `~/.cursor`, `Application Support/Cursor/**/state.vscdb` | none; accounted server-side | ❌ |
 | Goose | `~/.config/goose` | auth tokens only | ❌ |
 | Gemini CLI | `~/.gemini` | auth tokens only | ❌ |
+| Grok CLI | `~/.grok/sessions/**` | no per-turn tokens on disk; OTLP `grok_code.api_request` logs | ✅ OTLP |
 
 For the three that work, the exact record shapes are in the file header comment of each provider.
 
@@ -39,6 +40,7 @@ logic:
 | Claude Code | one `message.id` | repeated per content block, growing while streaming |
 | Codex | the session | `total_token_usage`, cumulative and monotonic |
 | Copilot | one model within a session | `modelMetrics`, restated on every event |
+| Grok | one API request (`prompt.id` / `event.sequence`) | OTLP log `grok_code.api_request` (not files) |
 
 Taking the maximum per field and adding the difference is idempotent: re-reading a line changes
 nothing, and a later, larger snapshot self-corrects.

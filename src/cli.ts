@@ -36,7 +36,7 @@ Commands:
   enable             Register to start at login
   disable            Remove the startup registration
   verify             Check the encrypted history is intact  (--rebuild repairs the cache)
-  telemetry          How to have Claude Code push usage here as it happens
+  telemetry          How to have Claude Code or Grok push usage here as it happens
   reset              Delete all recorded statistics (requires --yes)
 
 Options:

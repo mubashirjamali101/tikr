@@ -37,5 +37,19 @@ export function runTelemetry(args: Args): number {
   console.log(
     `The receiver binds to 127.0.0.1:${port} only, so nothing off this machine can reach it.`,
   )
+  console.log('')
+  console.log('Grok CLI does not write per-turn tokens to ~/.grok session files.')
+  console.log(
+    'It can push each API request over OTEL logs. Add these to the shell that launches grok:',
+  )
+  console.log('')
+  console.log('  export GROK_EXTERNAL_OTEL=1')
+  console.log('  export OTEL_LOGS_EXPORTER=otlp')
+  console.log('  export OTEL_METRICS_EXPORTER=none')
+  console.log('  export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf')
+  console.log(`  export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:${port}`)
+  console.log('')
+  console.log('Then `tikr start --otlp` (same receiver as Claude Code). Grok usage lands in')
+  console.log('`tikr stats` as grok/<model>. Old sessions cannot be backfilled.')
   return 0
 }

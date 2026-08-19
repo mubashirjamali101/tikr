@@ -15,6 +15,7 @@ Nothing is sent anywhere. The tool reads local files and writes to `~/.tikr`.
 | **Claude Code** | `~/.claude/projects/**/*.jsonl` |
 | **Codex** | `~/.codex/{sessions,archived_sessions}/**/*.jsonl` |
 | **GitHub Copilot CLI** | `~/.copilot/session-state/*/events.jsonl` |
+| **Grok CLI** | OTLP logs (`grok_code.api_request`). Session files have no token counts. |
 
 ```bash
 tikr providers   # what is tracked, what is not, and why
@@ -22,9 +23,9 @@ tikr providers   # what is tracked, what is not, and why
 
 A tool is added only once its on-disk format has been verified against a real installation.
 OpenCode, Antigravity, Cursor, Goose and Gemini CLI were each checked and do **not** record token
-usage locally (Cursor accounts it server-side; Antigravity's state is schema-less protobuf), so
-they are listed as untrackable rather than guessed at. `docs/PROVIDERS.md` has the evidence and
-explains how to add one.
+usage locally, so they are listed as untrackable rather than guessed at. Grok CLI was checked the
+same way: `~/.grok/sessions` has no per-turn tokens, so tikr reads Grok from its opt-in OTEL log
+stream instead (`tikr telemetry`). `docs/PROVIDERS.md` has the evidence.
 
 
 ## Screenshots

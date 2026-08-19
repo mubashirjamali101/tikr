@@ -5,8 +5,10 @@ import { describeReset, loadState } from '../core/state.js'
 import type { State } from '../core/types.js'
 import { watchTranscripts } from '../core/watch.js'
 import { clearPid, readPid, writePid } from '../daemon/lock.js'
+import { applyGrok } from '../otlp/apply-grok.js'
 import type { OtelSample } from '../otlp/parse.js'
 import { DEFAULT_OTLP_PORT, applySamples, startOtlpReceiver } from '../otlp/receiver.js'
+import type { UsageObservation } from '../providers/types.js'
 import { type Args, flagBool, flagInt } from '../util/args.js'
 
 export const DEFAULT_INTERVAL_SECONDS = 15
@@ -95,9 +97,20 @@ export async function runDaemon(args: Args): Promise<number> {
         return applied > 0 ? `[otlp] ${applied} samples` : null
       })
     }
+    const onGrok = (observations: UsageObservation[]): void => {
+      if (observations.length === 0) return
+      withState('transcript', (state) => {
+        let applied = 0
+        for (const observation of observations) {
+          if (applyGrok(state, observation)) applied += 1
+        }
+        return applied > 0 ? `[otlp/grok] ${applied} requests` : null
+      })
+    }
     receiver = startOtlpReceiver({
       port: otlpPort,
       onSamples,
+      onGrok,
       onError: (message) => log(`otlp: ${message}`),
     })
     log(`otlp receiver listening on 127.0.0.1:${otlpPort}`)

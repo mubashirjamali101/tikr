@@ -11,6 +11,7 @@
 
 export const TOKEN_METRIC = 'claude_code.token.usage'
 export const COST_METRIC = 'claude_code.cost.usage'
+export const GROK_TOKEN_METRIC = 'grok_code.token.usage'
 
 /**
  * Attributes kept on a counter sample.
@@ -72,6 +73,14 @@ function arrayOf(value: unknown): unknown[] {
   return Array.isArray(value) ? value : []
 }
 
+/** Claude uses cacheRead; Grok uses cache_read. Reasoning is folded into output at apply time. */
+function normalizeTokenType(type: string | undefined): string | null {
+  if (type === undefined || type === '') return null
+  if (type === 'cache_read') return 'cacheRead'
+  if (type === 'cache_creation' || type === 'cacheCreation') return 'cacheCreation'
+  return type
+}
+
 /**
  * Extract token and cost samples from an OTLP export request body.
  *
@@ -101,9 +110,12 @@ function collectMetric(metric: unknown, out: OtelSample[]): void {
       ? 'tokens'
       : name === COST_METRIC
         ? 'cost'
-        : typeof name === 'string' && name.startsWith('claude_code.')
-          ? 'counter'
-          : null
+        : name === GROK_TOKEN_METRIC
+          ? null
+          : typeof name === 'string' &&
+              (name.startsWith('claude_code.') || name.startsWith('grok_code.'))
+            ? 'counter'
+            : null
   if (kind === null) return
 
   // Both metrics are counters, which OTLP represents as `sum`.
@@ -118,7 +130,7 @@ function collectMetric(metric: unknown, out: OtelSample[]): void {
     const point = raw as Record<string, unknown>
     const attrs = attributes(point.attributes)
     const model = attrs.model ?? 'unknown'
-    const tokenType = kind === 'tokens' ? (attrs.type ?? null) : null
+    const tokenType = kind === 'tokens' ? normalizeTokenType(attrs.type) : null
     const source = attrs.query_source ?? null
     const metric = kind === 'counter' ? String(name) : null
     const signature =

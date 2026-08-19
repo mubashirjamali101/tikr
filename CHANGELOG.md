@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0 - 2026-08-20
+
+### Tracking
+
+- Grok CLI / Grok Build. Session files under `~/.grok` were checked against a real install and do
+  not carry per-turn input/output tokens. tikr therefore reads Grok from the opt-in OTEL log event
+  `grok_code.api_request` (protobuf or JSON) and folds it into the main ledger as `grok/<model>`.
+  Enable with `tikr start --otlp` and the env vars printed by `tikr telemetry`. No backfill of old
+  Grok sessions. Token metrics are ignored so enabling both Grok exporters cannot double-count.
+  Reasoning tokens are counted as output.
+
 ## 1.0.0 - 2026-08-11
 
 First public release.

@@ -2,7 +2,17 @@ import { type Server, createServer } from 'node:http'
 import { bucketFor, counterFor } from '../core/buckets.js'
 import { localDay } from '../core/parse.js'
 import type { OtelState, Totals } from '../core/types.js'
+import type { UsageObservation } from '../providers/types.js'
+import { parseOtlpLogs, parseOtlpLogsProtobuf } from './logs.js'
 import { COST_METRIC, type OtelSample, parseOtlpMetrics } from './parse.js'
+import {
+  decodeFields,
+  decodeKeyValues,
+  repeated,
+  sfixed64Value,
+  stringValue,
+  varintValue,
+} from './protobuf.js'
 
 export const DEFAULT_OTLP_PORT = 4318
 
@@ -12,6 +22,7 @@ const MAX_BODY_BYTES = 4 * 1024 * 1024
 const TOKEN_FIELD: Record<string, keyof Totals> = {
   input: 'input',
   output: 'output',
+  reasoning: 'output',
   cacheRead: 'cacheRead',
   // Telemetry does not split cache creation by TTL, so it lands in the cheaper 5-minute bucket.
   // Measured against Claude Code's own cost metric, these writes are in fact 1-hour ones, so an
@@ -86,6 +97,8 @@ export interface ReceiverOptions {
   port?: number
   /** Called with the samples from each accepted export. */
   onSamples: (samples: OtelSample[]) => void
+  /** Grok API-request log events, folded into the main ledger. */
+  onGrok?: (observations: UsageObservation[]) => void
   onError?: (message: string) => void
 }
 
@@ -129,9 +142,9 @@ export function startOtlpReceiver(options: ReceiverOptions): Server {
       res.writeHead(200, { 'content-type': 'application/json' })
       res.end('{}')
       try {
-        const body = Buffer.concat(chunks).toString('utf8')
+        const body = Buffer.concat(chunks)
         if (body.length === 0) return
-        options.onSamples(parseOtlpMetrics(JSON.parse(body)))
+        dispatch(req.url ?? '/', req.headers['content-type'] ?? '', body, options)
       } catch (error) {
         options.onError?.(error instanceof Error ? error.message : String(error))
       }
@@ -145,4 +158,84 @@ export function startOtlpReceiver(options: ReceiverOptions): Server {
   })
   server.listen(port, '127.0.0.1')
   return server
+}
+
+function isProtobuf(contentType: string): boolean {
+  return (
+    contentType.includes('application/x-protobuf') ||
+    contentType.includes('application/protobuf') ||
+    contentType.includes('application/x-google-protobuf')
+  )
+}
+
+function isLogs(url: string): boolean {
+  return url.includes('/v1/logs')
+}
+
+function isMetrics(url: string): boolean {
+  return url.includes('/v1/metrics') || url === '/' || url.length === 0
+}
+
+function dispatch(url: string, contentType: string, body: Buffer, options: ReceiverOptions): void {
+  const proto = isProtobuf(contentType)
+  if (isLogs(url)) {
+    const observations = proto ? parseOtlpLogsProtobuf(body) : parseOtlpLogs(parseJson(body))
+    if (observations.length > 0) options.onGrok?.(observations)
+    return
+  }
+  if (!isMetrics(url) && proto) {
+    // Some exporters POST protobuf to / without a signal path. Try logs first, then metrics.
+    const observations = parseOtlpLogsProtobuf(body)
+    if (observations.length > 0) {
+      options.onGrok?.(observations)
+      return
+    }
+  }
+  const samples = parseOtlpMetrics(proto ? protobufMetricsToJson(body) : parseJson(body))
+  if (samples.length > 0) options.onSamples(samples)
+}
+
+function parseJson(body: Buffer): unknown {
+  return JSON.parse(body.toString('utf8'))
+}
+
+/**
+ * Metrics protobuf is decoded only far enough to reuse the JSON collector.
+ * Grok token metrics are dropped there on purpose (same tokens as the log events).
+ */
+function protobufMetricsToJson(buf: Buffer): unknown {
+  const metrics: unknown[] = []
+  for (const resource of repeated(decodeFields(buf), 1)) {
+    const resourceFields = decodeFields(resource.bytes)
+    for (const scope of repeated(resourceFields, 2)) {
+      const scopeFields = decodeFields(scope.bytes)
+      for (const metric of repeated(scopeFields, 2)) {
+        const rec = decodeFields(metric.bytes)
+        const name = stringValue(rec, 1)
+        const sumField = rec.find((f) => f.n === 7 && f.wire === 2)
+        if (name === null || sumField === undefined) continue
+        const sum = decodeFields(sumField.bytes)
+        const temporality = Number(varintValue(sum, 2) ?? 1n)
+        const dataPoints = repeated(sum, 1).map((point) => {
+          const p = decodeFields(point.bytes)
+          const attrs = decodeKeyValues(p, 7)
+          const asInt = sfixed64Value(p, 6)
+          const dbl = p.find((f) => f.n === 4 && f.bytes.length === 8)
+          return {
+            asInt: asInt !== null ? String(asInt) : undefined,
+            asDouble: dbl ? dbl.bytes.readDoubleLE(0) : undefined,
+            attributes: Object.entries(attrs).map(([key, value]) => ({
+              key,
+              value: { stringValue: value },
+            })),
+          }
+        })
+        metrics.push({
+          name,
+          sum: { aggregationTemporality: temporality, dataPoints },
+        })
+      }
+    }
+  }
+  return { resourceMetrics: [{ scopeMetrics: [{ metrics }] }] }
 }

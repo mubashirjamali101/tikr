@@ -20,8 +20,13 @@ export function runProviders(): number {
   console.log('Tracked')
   for (const provider of PROVIDERS) {
     const installed = provider.installed()
-    const files = installed ? provider.discover().length : 0
-    const state = installed ? `${count(files)} session files` : 'not installed'
+    let state: string
+    if (!installed) state = 'not installed'
+    else if (provider.id === 'grok') {
+      state = 'OTLP live feed (session files have no token counts)'
+    } else {
+      state = `${count(provider.discover().length)} session files`
+    }
     console.log(`  ${provider.name.padEnd(20)} ${state}`)
     console.log(`  ${''.padEnd(20)} ${provider.root()}`)
   }

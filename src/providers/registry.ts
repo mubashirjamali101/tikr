@@ -1,6 +1,7 @@
 import { claudeProvider } from './claude.js'
 import { codexProvider } from './codex.js'
 import { copilotProvider } from './copilot.js'
+import { grokProvider } from './grok.js'
 import type { Provider } from './types.js'
 
 /**
@@ -15,10 +16,12 @@ import type { Provider } from './types.js'
  *   - Antigravity: state is protobuf (`.pb` / `.pbtxt`) with no published schema.
  *   - Cursor: usage accounting is server-side; the local `state.vscdb` holds chat, not tokens.
  *   - Goose, Gemini CLI: only auth tokens on disk, no usage records.
+ *   - Grok: session files have no per-turn token fields. Tracked via OTLP
+ *     `grok_code.api_request` logs when the external stream is enabled, not by reading ~/.grok.
  *
  * See `docs/PROVIDERS.md` for what a new provider has to supply.
  */
-export const PROVIDERS: Provider[] = [claudeProvider, codexProvider, copilotProvider]
+export const PROVIDERS: Provider[] = [claudeProvider, codexProvider, copilotProvider, grokProvider]
 
 export function providerById(id: string): Provider | undefined {
   return PROVIDERS.find((provider) => provider.id === id)
