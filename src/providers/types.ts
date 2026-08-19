@@ -83,4 +83,14 @@ export interface Provider {
   /** Non-usage facts worth recording, such as hitting the subscription limit. */
   parseSignal?: (line: string) => Signal | null
   retention: SeriesRetention
+  /**
+   * This tool reports over the local OTLP receiver, not session files.
+   * `tikr start` turns the receiver on when any installed provider sets this.
+   */
+  otlp?: boolean
+  /**
+   * Configure the installed tool so tikr can read it. Idempotent. A short status line, or
+   * null when file-watching is enough and nothing needs writing.
+   */
+  setup?: (options: { otlpPort: number }) => string | null
 }

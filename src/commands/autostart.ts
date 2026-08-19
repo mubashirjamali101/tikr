@@ -1,5 +1,6 @@
 import { resolveAutostart } from '../autostart/resolve.js'
-import { type Args, flagBool, flagInt } from '../util/args.js'
+import { wantOtlp } from '../core/setup.js'
+import { type Args, flagInt } from '../util/args.js'
 import { DEFAULT_INTERVAL_SECONDS } from './daemon.js'
 
 export function runEnable(args: Args): number {
@@ -9,7 +10,8 @@ export function runEnable(args: Args): number {
     return 1
   }
   const intervalSeconds = flagInt(args, 'interval', DEFAULT_INTERVAL_SECONDS)
-  backend.enable(intervalSeconds, flagBool(args, 'otlp'))
+  const otlp = wantOtlp(args)
+  backend.enable(intervalSeconds, otlp)
   console.log(`Enabled start at login via ${backend.name}.`)
   console.log(`  ${backend.location()}`)
   return 0

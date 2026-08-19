@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0 - 2026-08-20
+
+### Install
+
+- `install.sh` / `install.ps1` run `tikr start` after placing the binary, so a supported tool that
+  is already on the machine is configured and tracked without a second command. `TIKR_SKIP_START=1`
+  installs the binary only.
+- `tikr start` detects installed providers, writes Grok's `[telemetry]` keys when Grok is present
+  (and does not steal an off-loopback OTEL collector), and turns the OTLP receiver on when a tool
+  needs it. `--no-setup` and `--no-otlp` opt out. A service that was already running without the
+  receiver is restarted so Grok numbers start landing.
+
 ## 1.1.0 - 2026-08-20
 
 ### Tracking

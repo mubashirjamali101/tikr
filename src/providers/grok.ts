@@ -1,8 +1,9 @@
 import { existsSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
 import type { FileState, State } from '../core/types.js'
+import { grokHome, setupGrok } from './grok-setup.js'
 import type { Provider, UsageSource } from './types.js'
+
+export { grokHome }
 
 /**
  * Grok CLI / Grok Build.
@@ -17,11 +18,6 @@ import type { Provider, UsageSource } from './types.js'
  */
 export const GROK_OTLP_FILE = 'otlp://grok'
 
-function grokHome(): string {
-  const override = process.env.GROK_HOME
-  return override && override.length > 0 ? override : join(homedir(), '.grok')
-}
-
 export const grokProvider: Provider = {
   id: 'grok',
   name: 'Grok',
@@ -30,6 +26,8 @@ export const grokProvider: Provider = {
   discover: (): UsageSource[] => [],
   parse: () => null,
   retention: 'all',
+  otlp: true,
+  setup: setupGrok,
 }
 
 export function grokOtlpFile(state: State): FileState {

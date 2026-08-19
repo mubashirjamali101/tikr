@@ -3,31 +3,48 @@ import { commit } from '../core/commit.js'
 import { emptyResult } from '../core/ingest.js'
 import { logPath } from '../core/paths.js'
 import { scanAll } from '../core/scan.js'
+import { setupInstalled, wantOtlp } from '../core/setup.js'
 import { loadState } from '../core/state.js'
 import { readPid, writePid } from '../daemon/lock.js'
 import { spawnDaemon } from '../daemon/spawn.js'
+import { terminateDaemon } from '../daemon/terminate.js'
+import { otlpReachable } from '../otlp/probe.js'
 import { DEFAULT_OTLP_PORT } from '../otlp/receiver.js'
 import { type Args, flagBool, flagInt } from '../util/args.js'
 import { DEFAULT_INTERVAL_SECONDS } from './daemon.js'
 
 /**
- * The one-command setup: catch up on existing history, start the service, and register it to run
- * at login.
+ * The one-command setup: configure every supported tool found on this machine, catch up on
+ * existing history, start the service, and register it to run at login.
  *
  * The initial scan happens in the foreground so the user sees their existing usage immediately
- * rather than an empty report until the first daemon tick.
+ * rather than an empty report until the first daemon tick. Tools that cannot be read from files
+ * (Grok) are pointed at the local OTLP receiver; `--otlp` is implied when one of those is
+ * installed, and `--no-otlp` turns that off.
  */
-export function runStart(args: Args): number {
+export async function runStart(args: Args): Promise<number> {
   const intervalSeconds = flagInt(args, 'interval', DEFAULT_INTERVAL_SECONDS)
   const skipAutostart = flagBool(args, 'no-autostart')
-  const otlp = flagBool(args, 'otlp')
   const noBackfill = flagBool(args, 'no-backfill')
   const otlpPort = flagInt(args, 'otlp-port', DEFAULT_OTLP_PORT)
+  const otlp = wantOtlp(args)
+
+  if (!flagBool(args, 'no-setup')) reportSetup(setupInstalled(otlpPort))
 
   const backend = resolveAutostart()
   const willRegister = !skipAutostart && backend !== null
 
-  const running = readPid()
+  let running = readPid()
+  if (running !== null && otlp && !(await otlpReachable(otlpPort))) {
+    console.log('Restarting the service so it can receive live telemetry.')
+    const result = await terminateDaemon()
+    if (result === 'timeout') {
+      console.log(`Could not stop the running service (pid ${running}); it still has the lock.`)
+      return 1
+    }
+    running = readPid()
+  }
+
   if (running !== null) {
     console.log(`Service already running (pid ${running}).`)
   } else {
@@ -57,7 +74,7 @@ export function runStart(args: Args): number {
     }
     console.log(`Log: ${logPath()}`)
     if (otlp) {
-      console.log(`OTLP receiver on 127.0.0.1:${otlpPort} - run \`tikr telemetry\` for setup.`)
+      console.log(`OTLP receiver on 127.0.0.1:${otlpPort}.`)
     }
   }
 
@@ -83,6 +100,15 @@ export function runStart(args: Args): number {
     console.log('The service is running now; re-run `tikr enable` to retry.')
   }
   return 0
+}
+
+function reportSetup(lines: string[]): void {
+  if (lines.length === 0) {
+    console.log('No supported tools found yet. The service will pick them up when you install one.')
+    return
+  }
+  console.log('Tools on this machine')
+  for (const line of lines) console.log(`  ${line}`)
 }
 
 /** How long to wait for the supervisor to actually launch the service before saying it did not. */

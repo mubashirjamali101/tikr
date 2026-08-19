@@ -1,19 +1,8 @@
 import { existsSync } from 'node:fs'
 import { resolveAutostart } from '../autostart/resolve.js'
-import { clearPid, isRunning, readPid } from '../daemon/lock.js'
+import { readPid } from '../daemon/lock.js'
+import { terminateDaemon } from '../daemon/terminate.js'
 import { type Args, flagBool } from '../util/args.js'
-
-const STOP_TIMEOUT_MS = 5_000
-const POLL_MS = 100
-
-async function waitForExit(pid: number): Promise<boolean> {
-  const deadline = Date.now() + STOP_TIMEOUT_MS
-  while (Date.now() < deadline) {
-    if (!isRunning(pid)) return true
-    await new Promise((resolve) => setTimeout(resolve, POLL_MS))
-  }
-  return !isRunning(pid)
-}
 
 /**
  * Stop the background service.
@@ -30,21 +19,12 @@ export async function runStop(args: Args): Promise<number> {
   if (pid === null) {
     console.log('Service is not running.')
   } else {
-    try {
-      process.kill(pid, 'SIGTERM')
-    } catch (error) {
-      console.error(
-        `Could not signal pid ${pid}: ${error instanceof Error ? error.message : error}`,
-      )
+    const result = await terminateDaemon()
+    if (result === 'timeout') {
+      console.error(`Service (pid ${pid}) did not exit in time.`)
       return 1
     }
-    if (await waitForExit(pid)) {
-      console.log(`Service stopped (pid ${pid}).`)
-      clearPid()
-    } else {
-      console.error(`Service (pid ${pid}) did not exit within ${STOP_TIMEOUT_MS / 1000}s.`)
-      return 1
-    }
+    console.log(`Service stopped (pid ${pid}).`)
   }
 
   const backend = resolveAutostart()

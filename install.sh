@@ -44,6 +44,11 @@ fi
 
 mkdir -p "$dest_dir" 2>/dev/null || true
 
+# Replacing a running binary is SIGKILL'd on macOS; stop first so start can launch the new one.
+if [ -x "$dest" ]; then
+  "$dest" stop >/dev/null 2>&1 || true
+fi
+
 tmp=""
 src=""
 if [ -n "$REPO_DIR" ] && [ -f "$REPO_DIR/release/$bin" ]; then
@@ -80,4 +85,13 @@ case ":$PATH:" in
   *) echo "NOTE: add to your shell profile:  export PATH=\"$dest_dir:\$PATH\"" ;;
 esac
 
-"$dest" --version 2>/dev/null && echo "Done. Try:  tikr --help" || true
+"$dest" --version 2>/dev/null || true
+
+if [ -z "${TIKR_SKIP_START:-}" ]; then
+  echo "Setting up installed tools…"
+  if ! "$dest" start; then
+    echo "NOTE: the binary is installed; run  tikr start  to finish setup."
+  fi
+else
+  echo "Skipped start (TIKR_SKIP_START=1). Run:  tikr start"
+fi

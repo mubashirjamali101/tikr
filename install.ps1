@@ -18,6 +18,10 @@ if (-not $env:YES) {
 
 New-Item -ItemType Directory -Force -Path $destDir | Out-Null
 
+if (Test-Path $dest) {
+    try { & $dest stop | Out-Null } catch { }
+}
+
 $repoDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
 $local = Join-Path $repoDir "release\$bin"
 if (-not (Test-Path $local)) { $local = Join-Path $repoDir "dist\$bin" }
@@ -49,4 +53,14 @@ if ($userPath -notlike "*$destDir*") {
 }
 
 & $dest --version
-Write-Host "Done. Try:  tikr --help"
+
+if (-not $env:TIKR_SKIP_START) {
+    Write-Host "Setting up installed tools…"
+    try {
+        & $dest start
+    } catch {
+        Write-Host "NOTE: the binary is installed; run  tikr start  to finish setup."
+    }
+} else {
+    Write-Host "Skipped start (TIKR_SKIP_START=1). Run:  tikr start"
+}

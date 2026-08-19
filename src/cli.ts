@@ -25,7 +25,7 @@ Usage:
   tikr <command> [options]
 
 Commands:
-  start              Index existing usage, start the background service, and run it at login
+  start              Detect installed tools, configure them, start the service, run it at login
   stop               Stop the background service    (--disable also removes it from startup)
   status             Show service state and where data is kept
   providers          Which AI tools are tracked, and which cannot be
@@ -52,7 +52,9 @@ Options:
   --no-scan          Report stored numbers without scanning     [stats]
   --no-autostart     Start the service without registering it   [start]
   --no-backfill      Start counting from now, ignore past history [start, scan]
-  --otlp             Receive live telemetry from Claude Code    [start, enable]
+  --no-setup         Do not write tool config files             [start]
+  --otlp             Force the live telemetry receiver on       [start, enable]
+  --no-otlp          Leave the telemetry receiver off           [start, enable]
   --otlp-port <n>    Port for the receiver (default 4318)       [start, enable, telemetry]
 
   --dry-run          Ingest but write nothing                   [scan]
@@ -67,9 +69,9 @@ Data:
   Usage is read from each tool's own local session files and stored in ~/.tikr.
   Nothing is sent anywhere. Run \`tikr providers\` to see what is being tracked.
 
-  The service watches those files, so a new message is counted about a second after Claude Code
-  writes it. \`tikr telemetry\` sets up an additional push feed with Claude Code's own
-  cost figure and a main/subagent split.
+  The service watches those files, so a new message is counted about a second after it is
+  written. \`tikr start\` turns on live telemetry when a tool needs it (Grok does). Claude Code
+  can also push its own cost figure; \`tikr telemetry\` prints that optional setup.
 `
 
 async function main(): Promise<number> {

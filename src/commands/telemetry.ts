@@ -19,7 +19,8 @@ export function runTelemetry(args: Args): number {
   console.log(`  export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:${port}`)
   console.log('  export OTEL_METRIC_EXPORT_INTERVAL=10000   # optional: 10s instead of 60s')
   console.log('')
-  console.log('Then start the service with the receiver enabled:')
+  console.log('Then start the service with the receiver enabled (or `tikr start`, which does')
+  console.log('this on its own when Grok is installed):')
   console.log('')
   console.log('  tikr stop')
   console.log(`  tikr start --otlp${port === DEFAULT_OTLP_PORT ? '' : ` --otlp-port ${port}`}`)
@@ -39,17 +40,16 @@ export function runTelemetry(args: Args): number {
   )
   console.log('')
   console.log('Grok CLI does not write per-turn tokens to ~/.grok session files.')
-  console.log(
-    'It can push each API request over OTEL logs. Add these to the shell that launches grok:',
-  )
+  console.log('`tikr start` writes the [telemetry] keys in ~/.grok/config.toml and turns the')
+  console.log('receiver on when Grok is installed. Restart Grok afterwards. Usage lands in')
+  console.log('`tikr stats` as grok/<model>. Old sessions cannot be backfilled.')
+  console.log('')
+  console.log('To do the same by hand instead:')
   console.log('')
   console.log('  export GROK_EXTERNAL_OTEL=1')
   console.log('  export OTEL_LOGS_EXPORTER=otlp')
   console.log('  export OTEL_METRICS_EXPORTER=none')
   console.log('  export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf')
   console.log(`  export OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:${port}`)
-  console.log('')
-  console.log('Then `tikr start --otlp` (same receiver as Claude Code). Grok usage lands in')
-  console.log('`tikr stats` as grok/<model>. Old sessions cannot be backfilled.')
   return 0
 }

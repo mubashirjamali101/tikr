@@ -60,6 +60,8 @@ export const myProvider: Provider = {
   parse: (line, fileKey) => ..., // one UsageObservation, or null
   parseSignal: (line) => ...,    // optional: facts that are not usage, such as hitting a limit
   retention: 'all',              // or 'last-only', see below
+  otlp: true,                    // optional: start turns the receiver on when this tool is installed
+  setup: ({ otlpPort }) => ...,  // optional: idempotent config write, or null if files are enough
 }
 ```
 
@@ -86,8 +88,12 @@ Points that are easy to get wrong:
   signal has usage attached, it belongs in `parse`.
 - **`root()` must return a path even when the tool is absent.** It is used for the filesystem watch
   and in `providers` output.
-- **Provide an env override for the data directory** (`CODEX_HOME`, `COPILOT_HOME`). Without one,
+- **Provide an env override for the data directory** (`CODEX_HOME`, `COPILOT_HOME`, `GROK_HOME`). Without one,
   tests read the developer's real data and assertions drift with their actual usage.
+- **`otlp` and `setup`.** File-backed tools need neither: `tikr start` watches `root()` and that is
+  setup. A tool that cannot be read from disk sets `otlp: true` and `setup` writes whatever the
+  tool needs (Grok: `[telemetry]` in `config.toml`). `setup` must be idempotent and must not
+  overwrite an OTEL collector that is already pointed off-loopback.
 
 ## Pricing
 

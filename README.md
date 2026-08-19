@@ -50,8 +50,12 @@ curl -fsSL https://raw.githubusercontent.com/mubashirjamali101/tikr/main/install
 irm https://raw.githubusercontent.com/mubashirjamali101/tikr/main/install.ps1 | iex
 ```
 
-Press Enter if prompted. That downloads the standalone binary for your platform and puts `tikr`
-on your `PATH`. Binaries for macOS (arm64/x64), Linux (x64/arm64) and Windows (x64) ship on every
+Press Enter if prompted. That downloads the standalone binary, puts `tikr` on your `PATH`, then
+runs `tikr start`: it detects Claude Code, Codex, Copilot CLI and Grok if they are installed,
+configures the ones that need it (Grok's OTEL stream), indexes existing history, and registers
+the service to run at login. Set `TIKR_SKIP_START=1` to install the binary only.
+
+Binaries for macOS (arm64/x64), Linux (x64/arm64) and Windows (x64) ship on every
 [release](../../releases).
 
 <details>
@@ -67,12 +71,16 @@ pnpm install && pnpm run build
 
 ## Use
 
+The install script already ran this. Run it again after installing a new coding tool, or to
+repair setup:
+
 ```bash
 tikr start
 ```
 
-That indexes your existing history, starts the background service, and registers it to run at
-login. Then, whenever you want to know where your tokens went:
+That detects which supported tools are on the machine, configures them, indexes existing history,
+starts the background service, and registers it to run at login. Then, whenever you want to know
+where your tokens went:
 
 ```bash
 tikr stats
@@ -139,7 +147,7 @@ Piping it (`tikr > file`) prints the plain report instead of escape sequences.
 
 | Command | What it does |
 |---|---|
-| `start` | Index history, start the service, run it at login |
+| `start` | Detect installed tools, configure them, index history, start the service, run it at login |
 | `ui` / `live` | Live-updating dashboard |
 | `stop` | Stop the service (`--disable` also removes it from startup) |
 | `status` | Service state, and where data is kept |
