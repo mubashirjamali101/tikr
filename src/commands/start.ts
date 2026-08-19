@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process'
 import { resolveAutostart } from '../autostart/resolve.js'
 import { commit } from '../core/commit.js'
 import { emptyResult } from '../core/ingest.js'
@@ -89,6 +88,11 @@ export function runStart(args: Args): number {
 /** How long to wait for the supervisor to actually launch the service before saying it did not. */
 const START_TIMEOUT_MS = 4000
 
+/** Sleep without spawning `node -e`, which a bun-compiled `tikr` binary cannot run. */
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
 /**
  * Confirm the service is really running.
  *
@@ -112,9 +116,9 @@ function reportServiceState(
       console.log(`Service running (pid ${pid}).`)
       return
     }
-    // Busy-wait: this is a one-off command with nothing else to do, and a sleep would need the
-    // whole path to be async for no gain.
-    execFileSync(process.execPath, ['-e', 'setTimeout(()=>{},250)'])
+    // A compiled bun binary is not Node: `execPath -e` is an unknown flag and would throw here,
+    // aborting start after the LaunchAgent was already written.
+    sleepSync(250)
   }
 
   console.log('The startup entry did not launch the service; starting it directly instead.')

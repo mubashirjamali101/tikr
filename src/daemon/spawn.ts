@@ -18,6 +18,26 @@ export function nodeBinary(): string {
   return process.execPath
 }
 
+/**
+ * Bun `--compile` embeds the entry as `/$bunfs/cli.js`. That path is not a file, and passing it as
+ * argv makes the CLI treat it as a command (`Unknown command "/$bunfs/cli.js"`), so a LaunchAgent
+ * written that way crash-loops and never runs the daemon.
+ */
+export function isEmbeddedBinary(metaUrl = import.meta.url): boolean {
+  return metaUrl.includes('$bunfs')
+}
+
+/**
+ * Full command line to re-launch this process as the daemon.
+ *
+ * Node: `node dist/cli.js daemon --interval 15`. A compiled binary is already the CLI, so just
+ * `tikr daemon --interval 15`.
+ */
+export function daemonInvocation(options: SpawnOptions): string[] {
+  if (isEmbeddedBinary()) return [nodeBinary(), ...daemonArgs(options)]
+  return [nodeBinary(), entryScript(), ...daemonArgs(options)]
+}
+
 export interface SpawnOptions {
   intervalSeconds: number
   /** Run the OTLP receiver so Claude Code can push telemetry to us. */
@@ -45,7 +65,10 @@ export function daemonArgs(options: SpawnOptions): string[] {
 export function spawnDaemon(options: SpawnOptions): number {
   ensureHome()
   const out = openSync(logPath(), 'a')
-  const child = spawn(nodeBinary(), [entryScript(), ...daemonArgs(options)], {
+  const argv = daemonInvocation(options)
+  const command = argv[0] ?? nodeBinary()
+  const args = argv.slice(1)
+  const child = spawn(command, args, {
     detached: true,
     stdio: ['ignore', out, out],
     env: process.env,

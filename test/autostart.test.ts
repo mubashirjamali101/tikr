@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { LABEL, plistFor } from '../src/autostart/launchd.js'
 import { resolveAutostart } from '../src/autostart/resolve.js'
 import { UNIT, unitFor } from '../src/autostart/systemd.js'
+import { daemonInvocation, isEmbeddedBinary } from '../src/daemon/spawn.js'
 
 describe('resolveAutostart', () => {
   it('maps each supported platform to its native mechanism', () => {
@@ -59,6 +60,28 @@ describe('launchd plist', () => {
 
   it('carries the state directory through, so a reboot keeps a custom location', () => {
     expect(plistFor(15)).toContain('<key>TIKR_HOME</key>')
+  })
+
+  it('(bug) does not put a bun virtual path on argv, which the CLI would treat as a command', () => {
+    expect(plistFor(15, true)).not.toContain('$bunfs')
+    expect(plistFor(15, true)).toContain('<string>daemon</string>')
+    expect(plistFor(15, true)).toContain('<string>--otlp</string>')
+  })
+})
+
+describe('daemonInvocation', () => {
+  it('detects bun compile URLs so startup jobs skip the virtual entry script', () => {
+    expect(isEmbeddedBinary('file:///$bunfs/cli.js')).toBe(true)
+    expect(isEmbeddedBinary('file:///Users/me/tikr/dist/cli.js')).toBe(false)
+  })
+
+  it('under Node, re-launches via execPath plus the real entry script', () => {
+    const argv = daemonInvocation({ intervalSeconds: 15, otlp: true })
+    expect(argv[0]).toBe(process.execPath)
+    expect(argv).toContain('daemon')
+    expect(argv).toContain('--otlp')
+    expect(argv.some((part) => part.includes('$bunfs'))).toBe(false)
+    expect(argv[1]?.endsWith('cli.js') || argv[1]?.endsWith('cli.ts')).toBe(true)
   })
 })
 

@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { counterHome, logPath } from '../core/paths.js'
-import { daemonArgs, entryScript, nodeBinary } from '../daemon/spawn.js'
+import { daemonInvocation } from '../daemon/spawn.js'
 import type { AutostartBackend } from './types.js'
 
 export const LABEL = 'com.tikr.agent'
@@ -30,7 +30,7 @@ function escapeXml(value: string): string {
  * setting after a reboot - launchd does not inherit the shell environment.
  */
 export function plistFor(intervalSeconds: number, otlp = false): string {
-  const args = [nodeBinary(), entryScript(), ...daemonArgs({ intervalSeconds, otlp })]
+  const args = daemonInvocation({ intervalSeconds, otlp })
   const argXml = args.map((arg) => `    <string>${escapeXml(arg)}</string>`).join('\n')
 
   const env: Record<string, string> = { TIKR_HOME: counterHome() }

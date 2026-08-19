@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { counterHome } from '../core/paths.js'
-import { daemonArgs, entryScript, nodeBinary } from '../daemon/spawn.js'
+import { daemonInvocation } from '../daemon/spawn.js'
 import type { AutostartBackend } from './types.js'
 
 export const UNIT = 'tikr.service'
@@ -20,7 +20,7 @@ function unitPath(): string {
  * crashes. Environment is set explicitly because a user unit does not inherit the shell's.
  */
 export function unitFor(intervalSeconds: number, otlp = false): string {
-  const exec = [nodeBinary(), entryScript(), ...daemonArgs({ intervalSeconds, otlp })]
+  const exec = daemonInvocation({ intervalSeconds, otlp })
     .map((part) => (part.includes(' ') ? `"${part}"` : part))
     .join(' ')
 

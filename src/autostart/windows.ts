@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { daemonArgs, entryScript, nodeBinary } from '../daemon/spawn.js'
+import { daemonInvocation } from '../daemon/spawn.js'
 import type { AutostartBackend } from './types.js'
 
 const RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
@@ -13,8 +13,9 @@ const VALUE_NAME = 'Tikr'
  * login re-runs it regardless.
  */
 function command(intervalSeconds: number, otlp: boolean): string {
-  const args = daemonArgs({ intervalSeconds, otlp }).join(' ')
-  return `"${nodeBinary()}" "${entryScript()}" ${args}`
+  const argv = daemonInvocation({ intervalSeconds, otlp })
+  const binary = argv[0] ?? ''
+  return [`"${binary}"`, ...argv.slice(1)].join(' ')
 }
 
 function reg(args: string[]): void {
