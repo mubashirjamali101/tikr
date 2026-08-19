@@ -5,4 +5,4 @@
  * would drag the manifest into the build. `test/version.test.ts` asserts the two agree, so they
  * cannot drift silently.
  */
-export const VERSION = '1.2.0'
+export const VERSION = '1.2.1'

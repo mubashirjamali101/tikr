@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.1 - 2026-08-20
+
+### Install
+
+- First `tikr start` (and therefore the install script) backfills **every** file-backed tool that is
+  installed — Claude Code, Codex, Copilot CLI — from their existing session files, then prints the
+  all-time by-tool table. Stats no longer start at zero; they start at what is already on disk.
+  Grok still cannot be backfilled (no token fields in session files) and keeps the live OTEL feed.
+- The backfill runs even if the service is already running, so a first open is not an empty report.
+- `tikr stats` and the dashboard fall back to all recorded days when the default 30-day window is
+  empty, unless `--last` / `--days` / `--since` was set.
+
 ## 1.2.0 - 2026-08-20
 
 ### Install

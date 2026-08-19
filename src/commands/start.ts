@@ -4,23 +4,24 @@ import { emptyResult } from '../core/ingest.js'
 import { logPath } from '../core/paths.js'
 import { scanAll } from '../core/scan.js'
 import { setupInstalled, wantOtlp } from '../core/setup.js'
-import { loadState } from '../core/state.js'
+import { StateRegressionError, loadState } from '../core/state.js'
 import { readPid, writePid } from '../daemon/lock.js'
 import { spawnDaemon } from '../daemon/spawn.js'
 import { terminateDaemon } from '../daemon/terminate.js'
 import { otlpReachable } from '../otlp/probe.js'
 import { DEFAULT_OTLP_PORT } from '../otlp/receiver.js'
+import { printIndexedUsage } from '../report/sections.js'
 import { type Args, flagBool, flagInt } from '../util/args.js'
 import { DEFAULT_INTERVAL_SECONDS } from './daemon.js'
 
 /**
- * The one-command setup: configure every supported tool found on this machine, catch up on
- * existing history, start the service, and register it to run at login.
+ * The one-command setup: configure every supported tool found on this machine, read their
+ * existing session files so stats start from current usage, start the service, and register it
+ * to run at login.
  *
- * The initial scan happens in the foreground so the user sees their existing usage immediately
- * rather than an empty report until the first daemon tick. Tools that cannot be read from files
- * (Grok) are pointed at the local OTLP receiver; `--otlp` is implied when one of those is
- * installed, and `--no-otlp` turns that off.
+ * The backfill runs even if the service is already up, so a first `tikr start` (or install) is
+ * never an empty report. Grok has no files to read and is pointed at the local OTLP receiver;
+ * `--otlp` is implied when an installed tool needs it, and `--no-otlp` turns that off.
  */
 export async function runStart(args: Args): Promise<number> {
   const intervalSeconds = flagInt(args, 'interval', DEFAULT_INTERVAL_SECONDS)
@@ -28,8 +29,7 @@ export async function runStart(args: Args): Promise<number> {
   const noBackfill = flagBool(args, 'no-backfill')
   const otlpPort = flagInt(args, 'otlp-port', DEFAULT_OTLP_PORT)
   const otlp = wantOtlp(args)
-
-  if (!flagBool(args, 'no-setup')) reportSetup(setupInstalled(otlpPort))
+  const configure = !flagBool(args, 'no-setup')
 
   const backend = resolveAutostart()
   const willRegister = !skipAutostart && backend !== null
@@ -37,29 +37,32 @@ export async function runStart(args: Args): Promise<number> {
   let running = readPid()
   if (running !== null && otlp && !(await otlpReachable(otlpPort))) {
     console.log('Restarting the service so it can receive live telemetry.')
-    const result = await terminateDaemon()
-    if (result === 'timeout') {
+    const stopped = await terminateDaemon()
+    if (stopped === 'timeout') {
       console.log(`Could not stop the running service (pid ${running}); it still has the lock.`)
       return 1
     }
     running = readPid()
   }
 
-  if (running !== null) {
-    console.log(`Service already running (pid ${running}).`)
-  } else {
-    const { state } = loadState()
-    let result = emptyResult()
+  const { state } = loadState()
+  let result = emptyResult()
+  try {
     commit(state, 'transcript', (draft) => {
       result = scanAll(draft, { seedOnly: noBackfill })
     })
-    console.log(
-      noBackfill
-        ? `Marked ${result.filesSeen} transcripts as the starting point; counting begins now.`
-        : `Indexed ${result.filesSeen} transcript${result.filesSeen === 1 ? '' : 's'}, ` +
-            `${result.messages} new message${result.messages === 1 ? '' : 's'}.`,
-    )
+  } catch (error) {
+    if (!(error instanceof StateRegressionError)) throw error
+    console.log('Existing record is already ahead of this scan; leaving it in place.')
+  }
 
+  const recorded = loadState().state
+  reportSetup(setupInstalled(otlpPort, result, noBackfill, configure, recorded))
+  if (!noBackfill) printIndexedUsage(recorded)
+
+  if (running !== null) {
+    console.log(`Service already running (pid ${running}).`)
+  } else {
     if (willRegister) {
       // launchd and systemd both start the service as part of registering it. Spawning here too
       // would leave a second copy fighting over the lockfile and respawning every few seconds.

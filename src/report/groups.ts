@@ -34,6 +34,23 @@ export function daysWithin(state: State, from: string | null, to: string | null 
     .filter((day) => (from === null || day >= from) && (to === null || day <= to))
 }
 
+/**
+ * The days to show in a report. An unpinned default window that happens to be empty (history
+ * older than 30 days is the usual case) falls back to everything recorded, so a first run is not
+ * a blank table.
+ */
+export function daysForReport(
+  state: State,
+  from: string | null,
+  to: string | null,
+  pinned: boolean,
+): { days: string[]; widened: boolean } {
+  const days = daysWithin(state, from, to)
+  if (days.length > 0 || pinned || from === null) return { days, widened: false }
+  const all = daysWithin(state, null, to)
+  return { days: all, widened: all.length > 0 }
+}
+
 /** Roll the day buckets up into days, weeks or months. */
 export function byPeriod(
   state: State,

@@ -1,6 +1,6 @@
 {
   "name": "tikr",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Track token usage across Claude Code, Codex, GitHub Copilot CLI, and Grok. Local, encrypted, append-only.",
   "keywords": [
     "claude",

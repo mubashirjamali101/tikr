@@ -1,7 +1,7 @@
 import { statSync } from 'node:fs'
 import { PROVIDERS } from '../providers/registry.js'
 import type { Provider } from '../providers/types.js'
-import { type IngestResult, emptyResult, ingestFile } from './ingest.js'
+import { type IngestResult, emptyResult, ingestFile, tallyProvider } from './ingest.js'
 import type { State } from './types.js'
 
 export interface TranscriptFile {
@@ -61,9 +61,18 @@ export function scanAll(state: State, options: ScanOptions = {}): IngestResult {
       }
       state.files[file.path] = { offset: size, size, series: {} }
       result.filesSeen += 1
+      tallyProvider(result, file.provider.id, 1, 0)
       continue
     }
+    const filesBefore = result.filesSeen
+    const messagesBefore = result.messages
     ingestFile(state, file.provider, file.path, file.project, result)
+    tallyProvider(
+      result,
+      file.provider.id,
+      result.filesSeen - filesBefore,
+      result.messages - messagesBefore,
+    )
   }
 
   trackPruned(state, present)

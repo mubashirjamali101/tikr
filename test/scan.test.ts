@@ -84,6 +84,7 @@ describe('scanAll', () => {
     const result = scanAll(state)
 
     expect(result.messages).toBe(3)
+    expect(result.byProvider['claude-code']).toEqual({ files: 3, messages: 3 })
     expect(state.projects['-Users-me-app']?.['claude-code/claude-opus-5']?.output).toBe(30)
     expect(state.projects['-Users-me-other']?.['claude-code/claude-opus-5']?.output).toBe(7)
     expect(state.lastScanAt).not.toBeNull()

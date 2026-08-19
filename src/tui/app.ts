@@ -18,7 +18,7 @@ const WINDOWS = [7, 30, 90, 0]
  * timer that keeps relative timestamps honest while idle. It never repaints on a fixed fast tick,
  * because a TUI that redraws when nothing changed burns battery for no benefit.
  */
-export async function runApp(initialWindow: number): Promise<number> {
+export async function runApp(initialWindow: number, windowPinned = false): Promise<number> {
   const view: ViewState = {
     tab: 'overview',
     selected: 0,
@@ -34,15 +34,29 @@ export async function runApp(initialWindow: number): Promise<number> {
   let dirty = true
 
   function refresh(): Snapshot {
-    const { state } = loadState()
-    // Only scan here when the background service is not already doing it.
-    if (readPid() === null) {
-      commit(state, 'transcript', (draft) => {
-        scanAll(draft)
-      })
+    let { state } = loadState()
+    // Scan when the daemon is down, and also when the record is empty: a first open should
+    // consume existing Claude/Codex/Copilot history even if the service has not caught up.
+    if (readPid() === null || Object.keys(state.daily).length === 0) {
+      try {
+        commit(state, 'transcript', (draft) => {
+          scanAll(draft)
+        })
+      } catch {
+        // A running service may already hold a larger record; show whatever is on disk.
+      }
+      state = loadState().state
     }
     view.serviceRunning = readPid() !== null
     view.lastUpdate = new Date()
+    if (
+      !windowPinned &&
+      view.windowDays > 0 &&
+      snapshot(state, view.windowDays).days.length === 0 &&
+      Object.keys(state.daily).length > 0
+    ) {
+      view.windowDays = 0
+    }
     return snapshot(state, view.windowDays)
   }
 

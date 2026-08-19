@@ -5,6 +5,11 @@ import { apply } from './fold.js'
 import { recordLimitEvent } from './limits.js'
 import type { FileState, State } from './types.js'
 
+export interface ProviderScan {
+  files: number
+  messages: number
+}
+
 export interface IngestResult {
   filesSeen: number
   filesChanged: number
@@ -13,10 +18,32 @@ export interface IngestResult {
   resyncs: number
   /** Usage limit events newly recorded this pass. */
   limitEvents: number
+  /** Per-provider file and message counts from this pass. */
+  byProvider: Record<string, ProviderScan>
 }
 
 export function emptyResult(): IngestResult {
-  return { filesSeen: 0, filesChanged: 0, bytesRead: 0, messages: 0, resyncs: 0, limitEvents: 0 }
+  return {
+    filesSeen: 0,
+    filesChanged: 0,
+    bytesRead: 0,
+    messages: 0,
+    resyncs: 0,
+    limitEvents: 0,
+    byProvider: {},
+  }
+}
+
+export function tallyProvider(
+  result: IngestResult,
+  id: string,
+  files: number,
+  messages: number,
+): void {
+  const bucket = result.byProvider[id] ?? { files: 0, messages: 0 }
+  bucket.files += files
+  bucket.messages += messages
+  result.byProvider[id] = bucket
 }
 
 /** Read `length` bytes starting at `start`. Every provider's files are UTF-8 JSONL. */

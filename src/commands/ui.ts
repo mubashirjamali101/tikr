@@ -14,5 +14,5 @@ export function runUi(args: Args): Promise<number> | number {
   if (!isInteractive()) {
     return runStats(args)
   }
-  return runApp(flagInt(args, 'days', 30, 0))
+  return runApp(flagInt(args, 'days', 30, 0), args.flags.has('days'))
 }

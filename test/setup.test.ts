@@ -2,23 +2,31 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { installedNeedOtlp, wantOtlp } from '../src/core/setup.js'
+import { emptyResult } from '../src/core/ingest.js'
+import { installedNeedOtlp, setupInstalled, wantOtlp } from '../src/core/setup.js'
+import { emptyState } from '../src/core/types.js'
 import { setupGrok } from '../src/providers/grok-setup.js'
+import { daysForReport } from '../src/report/groups.js'
 import { parseArgs } from '../src/util/args.js'
 import { tomlTable, upsertTomlTable } from '../src/util/toml.js'
 
 let dir: string
-let previousHome: string | undefined
+const saved: Record<string, string | undefined> = {}
+const ENV = ['GROK_HOME', 'CLAUDE_CONFIG_DIR', 'CODEX_HOME', 'COPILOT_HOME'] as const
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'tikr-setup-'))
-  previousHome = process.env.GROK_HOME
-  process.env.GROK_HOME = join(dir, 'missing')
+  for (const key of ENV) {
+    saved[key] = process.env[key]
+    process.env[key] = join(dir, `no-${key}`)
+  }
 })
 
 afterEach(() => {
-  if (previousHome === undefined) Reflect.deleteProperty(process.env, 'GROK_HOME')
-  else process.env.GROK_HOME = previousHome
+  for (const key of ENV) {
+    if (saved[key] === undefined) Reflect.deleteProperty(process.env, key)
+    else process.env[key] = saved[key]
+  }
   rmSync(dir, { recursive: true, force: true })
 })
 
@@ -112,5 +120,44 @@ describe('wantOtlp', () => {
 
   it('honours an explicit --otlp even with no Grok', () => {
     expect(wantOtlp(parseArgs(['start', '--otlp']))).toBe(true)
+  })
+})
+
+describe('setupInstalled', () => {
+  it('reports indexed history for every file-backed tool that is present', () => {
+    process.env.CLAUDE_CONFIG_DIR = dir
+    mkdirSync(join(dir, 'projects'), { recursive: true })
+    const result = emptyResult()
+    result.byProvider['claude-code'] = { files: 2, messages: 9 }
+    expect(setupInstalled(4318, result, false, false)).toEqual([
+      'Claude Code: 2 files, 9 messages from existing history',
+    ])
+  })
+
+  it('says Grok cannot be backfilled from files', () => {
+    process.env.GROK_HOME = dir
+    mkdirSync(dir, { recursive: true })
+    const lines = setupInstalled(4318, emptyResult(), false, true)
+    expect(lines.some((line) => line.startsWith('Grok:'))).toBe(true)
+    expect(lines.join('\n')).not.toMatch(/Grok: \d+ files/)
+  })
+})
+
+describe('daysForReport', () => {
+  it('widens an empty default window to all recorded days', () => {
+    const state = emptyState()
+    state.daily['2026-03-01'] = {}
+    const { days, widened } = daysForReport(state, '2026-07-01', null, false)
+    expect(widened).toBe(true)
+    expect(days).toEqual(['2026-03-01'])
+  })
+
+  it('does not widen when the user pinned the window', () => {
+    const state = emptyState()
+    state.daily['2026-03-01'] = {}
+    expect(daysForReport(state, '2026-07-01', null, true)).toEqual({
+      days: [],
+      widened: false,
+    })
   })
 })

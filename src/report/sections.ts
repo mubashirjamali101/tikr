@@ -2,7 +2,9 @@ import { identifyBlocks } from '../core/blocks.js'
 import { estimateCostByModel } from '../core/pricing.js'
 import type { State, Totals } from '../core/types.js'
 import { since, tokens, usd } from './format.js'
+import { byProvider, daysWithin, mergeByModel } from './groups.js'
 import { renderProduced } from './produced.js'
+import { renderBuckets } from './render.js'
 
 /**
  * The two report sections that are their own shape: machine-readable output, and the telemetry
@@ -55,4 +57,17 @@ export function printTelemetry(state: State): void {
 
   const produced = renderProduced(otel)
   if (produced !== '') console.log(`\n${produced}`)
+}
+
+/** All-time by-tool table, for the first-run scan so existing history is visible immediately. */
+export function printIndexedUsage(state: State): void {
+  const days = daysWithin(state, null)
+  if (days.length === 0) {
+    console.log('No historical usage on disk yet. New messages will be counted as they happen.')
+    return
+  }
+  const byModel = mergeByModel(days.map((day) => state.daily[day] ?? {}))
+  const range = `${days[0]} to ${days[days.length - 1]} (${days.length} day${days.length === 1 ? '' : 's'})`
+  console.log(`Recorded usage - ${range}\n`)
+  console.log(renderBuckets(byProvider(byModel), 'By tool'))
 }

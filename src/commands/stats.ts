@@ -13,7 +13,7 @@ import {
   byProject,
   byProvider,
   callouts,
-  daysWithin,
+  daysForReport,
   labelFor,
   mergeByModel,
   projectLabel,
@@ -59,7 +59,12 @@ export function runStats(args: Args): number {
   }
 
   const from = windowStart(args, unit, startOn)
-  const days = daysWithin(state, from, flagString(args, 'until'))
+  const pinned =
+    args.flags.has('last') ||
+    args.flags.has('days') ||
+    args.flags.has('since') ||
+    args.flags.has('until')
+  const { days, widened } = daysForReport(state, from, flagString(args, 'until'), pinned)
   const totalsByModel = mergeByModel(days.map((day) => state.daily[day] ?? {}))
 
   if (flagBool(args, 'json')) return printJson(state, days, totalsByModel)
@@ -73,7 +78,7 @@ export function runStats(args: Args): number {
   const recorded = Object.keys(state.daily).length
   const range =
     days.length > 0
-      ? `${days[0]} to ${days[days.length - 1]} (${days.length} day${days.length === 1 ? '' : 's'})`
+      ? `${days[0]} to ${days[days.length - 1]} (${days.length} day${days.length === 1 ? '' : 's'}${widened ? ', all recorded' : ''})`
       : recorded === 0
         ? 'no usage recorded yet'
         : `nothing in this window (${recorded} day${recorded === 1 ? '' : 's'} recorded, --last 0 shows all)`

@@ -52,8 +52,9 @@ irm https://raw.githubusercontent.com/mubashirjamali101/tikr/main/install.ps1 | 
 
 Press Enter if prompted. That downloads the standalone binary, puts `tikr` on your `PATH`, then
 runs `tikr start`: it detects Claude Code, Codex, Copilot CLI and Grok if they are installed,
-configures the ones that need it (Grok's OTEL stream), indexes existing history, and registers
-the service to run at login. Set `TIKR_SKIP_START=1` to install the binary only.
+reads existing session files so stats start from current usage, configures Grok's OTEL stream,
+prints the all-time by-tool table, and registers the service to run at login. Set
+`TIKR_SKIP_START=1` to install the binary only.
 
 Binaries for macOS (arm64/x64), Linux (x64/arm64) and Windows (x64) ship on every
 [release](../../releases).
@@ -78,9 +79,10 @@ repair setup:
 tikr start
 ```
 
-That detects which supported tools are on the machine, configures them, indexes existing history,
-starts the background service, and registers it to run at login. Then, whenever you want to know
-where your tokens went:
+That detects which supported tools are on the machine, reads their existing session files so stats
+start from current usage (Claude Code, Codex, Copilot CLI), configures Grok's live OTEL feed,
+starts the background service, and registers it to run at login. The first run prints the all-time
+by-tool table. Then, whenever you want to know where your tokens went:
 
 ```bash
 tikr stats
