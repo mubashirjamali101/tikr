@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.2 - 2026-08-21
+
+### Install
+
+- Linux `tikr start` no longer dies with `error: Script not found`. A compiled binary is
+  re-launched as itself, even when bun reports a host path instead of `/$bunfs/…`.
+- `install.sh` picks the musl build on Alpine and similar, writes to `~/.local/bin` when `curl | bash`
+  cannot prompt for sudo, and fails clearly if the download or the binary cannot run.
+- Release builds Linux binaries on Linux rather than cross-compiling them from macOS.
+
 ## 1.2.1 - 2026-08-20
 
 ### Install

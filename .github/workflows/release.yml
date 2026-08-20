@@ -1,7 +1,9 @@
 name: Release
 
 # Cut a release:  git tag v1.0.0 && git push origin v1.0.0
-# Compiles standalone binaries for macOS, Windows and Linux.
+# Compiles standalone binaries on the OS they run on. Linux was previously
+# cross-compiled from macOS; those binaries failed at `tikr start` with
+# `error: Script not found`.
 on:
   push:
     tags: ["v*"]
@@ -14,14 +16,10 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: macos-latest
+  check:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
 
       - uses: pnpm/action-setup@v4
         with:
@@ -45,8 +43,52 @@ jobs:
             exit 1
           fi
 
-      - name: Build binaries for every platform
-        run: chmod +x build.sh && ./build.sh
+  compile:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            filter: macos
+          - os: ubuntu-latest
+            filter: linux
+          - os: windows-latest
+            filter: windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build binaries
+        shell: bash
+        run: chmod +x build.sh && ./build.sh ${{ matrix.filter }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.filter }}
+          path: release/tikr-*
+          if-no-files-found: error
+
+  release:
+    needs: compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cd release
+          sha256sum tikr-* > SHA256SUMS
+          ls -lh
 
       - uses: softprops/action-gh-release@v2
         with:

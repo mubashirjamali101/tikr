@@ -18,13 +18,25 @@ export function nodeBinary(): string {
   return process.execPath
 }
 
+const NODE_OR_BUN = /^(?:node|node\.exe|bun|bun\.exe)$/i
+
+function bunIsStandalone(): boolean {
+  const bun = (globalThis as { Bun?: { isStandaloneExecutable?: boolean } }).Bun
+  return bun?.isStandaloneExecutable === true
+}
+
 /**
- * Bun `--compile` embeds the entry as `/$bunfs/cli.js`. That path is not a file, and passing it as
- * argv makes the CLI treat it as a command (`Unknown command "/$bunfs/cli.js"`), so a LaunchAgent
- * written that way crash-loops and never runs the daemon.
+ * True when this process is a `bun build --compile` binary, not `node dist/cli.js`.
+ *
+ * Cross-compiled Linux binaries have been seen to report a host path (or the executable's own
+ * path) instead of `/$bunfs/…`. Passing that as argv makes bun try to load it as a script and
+ * die with `error: Script not found "…"`, which is how Linux install failed at `tikr start`.
  */
-export function isEmbeddedBinary(metaUrl = import.meta.url): boolean {
-  return metaUrl.includes('$bunfs')
+export function isEmbeddedBinary(metaUrl = import.meta.url, execPath = process.execPath): boolean {
+  if (metaUrl.includes('$bunfs') || metaUrl.includes('~BUN')) return true
+  if (bunIsStandalone()) return true
+  const base = execPath.replace(/\\/g, '/').split('/').pop() ?? ''
+  return !NODE_OR_BUN.test(base)
 }
 
 /**
@@ -33,9 +45,13 @@ export function isEmbeddedBinary(metaUrl = import.meta.url): boolean {
  * Node: `node dist/cli.js daemon --interval 15`. A compiled binary is already the CLI, so just
  * `tikr daemon --interval 15`.
  */
-export function daemonInvocation(options: SpawnOptions): string[] {
-  if (isEmbeddedBinary()) return [nodeBinary(), ...daemonArgs(options)]
-  return [nodeBinary(), entryScript(), ...daemonArgs(options)]
+export function daemonInvocation(
+  options: SpawnOptions,
+  execPath = process.execPath,
+  metaUrl = import.meta.url,
+): string[] {
+  if (isEmbeddedBinary(metaUrl, execPath)) return [execPath, ...daemonArgs(options)]
+  return [execPath, entryScript(), ...daemonArgs(options)]
 }
 
 export interface SpawnOptions {

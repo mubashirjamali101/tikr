@@ -9,7 +9,17 @@
 set -euo pipefail
 
 REPO="${TIKR_REPO:-mubashirjamali101/tikr}"
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
+# Piped `curl | bash` has no real script path; do not treat cwd as the repo.
+self=""
+if [ -n "${BASH_SOURCE+x}" ] && [ -n "${BASH_SOURCE[0]:-}" ]; then
+  self="${BASH_SOURCE[0]}"
+elif [ -n "${0:-}" ] && [ "$0" != "bash" ] && [ "$0" != "sh" ]; then
+  self="$0"
+fi
+REPO_DIR=""
+if [ -n "$self" ] && [ -f "$self" ]; then
+  REPO_DIR="$(cd "$(dirname "$self")" 2>/dev/null && pwd || echo "")"
+fi
 
 os="$(uname -s)"
 arch="$(uname -m)"
@@ -23,12 +33,30 @@ case "$arch" in
   x86_64|amd64)  a="x64" ;;
   *) echo "Unsupported arch: $arch"; exit 1 ;;
 esac
+
+linux_libc() {
+  # A glibc binary on musl (Alpine, Void) fails with "No such file or directory"
+  # because the dynamic linker path is missing. Pick the musl build there.
+  if [ -f /etc/alpine-release ]; then echo musl; return; fi
+  if [ -e /lib/ld-musl-x86_64.so.1 ] || [ -e /lib/ld-musl-aarch64.so.1 ]; then echo musl; return; fi
+  if command -v ldd >/dev/null 2>&1 && ldd /bin/sh 2>&1 | grep -qi musl; then echo musl; return; fi
+  echo gnu
+}
+
 bin="tikr-${plat}-${a}"
+if [ "$plat" = linux ] && [ "$(linux_libc)" = musl ]; then
+  bin="tikr-linux-${a}-musl"
+fi
 
 choose_dir() {
   if [ -n "${PREFIX:-}" ]; then echo "$PREFIX"; return; fi
   if [ -w /usr/local/bin ] 2>/dev/null; then echo /usr/local/bin; return; fi
-  if command -v sudo >/dev/null 2>&1 && [ -d /usr/local/bin ]; then echo /usr/local/bin; return; fi
+  # sudo needs a TTY for a password. `curl | bash` has none, so do not pick a
+  # root-owned directory we cannot actually write to.
+  if [ -t 0 ] && command -v sudo >/dev/null 2>&1 && [ -d /usr/local/bin ]; then
+    echo /usr/local/bin
+    return
+  fi
   echo "$HOME/.local/bin"
 }
 dest_dir="$(choose_dir)"
@@ -68,7 +96,11 @@ else
   tmp="$(mktemp)"
   url="${base%/}/$bin"
   echo "Downloading $url …"
-  curl -fsSL "$url" -o "$tmp"
+  if ! curl -fsSL "$url" -o "$tmp"; then
+    echo "Failed to download $url" >&2
+    echo "See https://github.com/${REPO}/releases for a $bin build." >&2
+    exit 1
+  fi
   src="$tmp"
 fi
 
@@ -85,7 +117,10 @@ case ":$PATH:" in
   *) echo "NOTE: add to your shell profile:  export PATH=\"$dest_dir:\$PATH\"" ;;
 esac
 
-"$dest" --version 2>/dev/null || true
+if ! "$dest" --version; then
+  echo "The installed binary could not run ($dest)." >&2
+  exit 1
+fi
 
 if [ -z "${TIKR_SKIP_START:-}" ]; then
   echo "Setting up installed tools…"

@@ -91,6 +91,60 @@ jobs:
           tikr statusline --install
           test -f "$TIKR_HOME/state.json"
 
+  compiled:
+    if: github.actor != 'dependabot[bot]'
+    # The curl installer ships a bun --compile binary. npm pack never exercises that path.
+    name: compiled (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Compile native binary and run start
+        env:
+          TIKR_HOME: ${{ runner.temp }}/tikr-home
+        run: |
+          set -euo pipefail
+          case "$(uname -s)-$(uname -m)" in
+            Linux-x86_64)  target=bun-linux-x64-baseline ;;
+            Linux-aarch64) target=bun-linux-arm64 ;;
+            Darwin-arm64)  target=bun-darwin-arm64 ;;
+            Darwin-x86_64) target=bun-darwin-x64 ;;
+            *) echo "unhandled $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+          esac
+          bun build --compile --target="$target" \
+            --no-compile-autoload-dotenv --no-compile-autoload-bunfig \
+            src/cli.ts --outfile "$RUNNER_TEMP/tikr"
+          "$RUNNER_TEMP/tikr" --version
+          "$RUNNER_TEMP/tikr" start --no-autostart --no-setup
+          "$RUNNER_TEMP/tikr" status
+          "$RUNNER_TEMP/tikr" stop
+
+      - name: install.sh from a local Linux binary
+        if: runner.os == 'Linux'
+        env:
+          TIKR_HOME: ${{ runner.temp }}/tikr-install-home
+          PREFIX: ${{ runner.temp }}/tikr-prefix
+          YES: '1'
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          a=x64
+          case "$(uname -m)" in aarch64|arm64) a=arm64 ;; esac
+          cp "$RUNNER_TEMP/tikr" "release/tikr-linux-${a}"
+          chmod +x install.sh
+          ./install.sh
+          "$PREFIX/tikr" --version
+          "$PREFIX/tikr" stop >/dev/null 2>&1 || true
+
   dependabot:
     if: github.actor == 'dependabot[bot]'
     name: dependabot smoke

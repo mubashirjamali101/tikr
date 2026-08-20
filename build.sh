@@ -12,8 +12,12 @@ OUT=release
 targets=(
   "bun-darwin-arm64:tikr-macos-arm64"
   "bun-darwin-x64:tikr-macos-x64"
-  "bun-linux-x64:tikr-linux-x64"
+  # baseline: Linux x64 without AVX2. The default modern build dies with
+  # "Illegal instruction" on older CPUs; install.sh names this tikr-linux-x64.
+  "bun-linux-x64-baseline:tikr-linux-x64"
   "bun-linux-arm64:tikr-linux-arm64"
+  "bun-linux-x64-baseline-musl:tikr-linux-x64-musl"
+  "bun-linux-arm64-musl:tikr-linux-arm64-musl"
   "bun-windows-x64:tikr-windows-x64.exe"
 )
 
@@ -32,7 +36,9 @@ for entry in "${targets[@]}"; do
     continue
   fi
   echo "==> $output"
-  bun build --compile --target="$target" src/cli.ts --outfile "$OUT/$output"
+  bun build --compile --target="$target" \
+    --no-compile-autoload-dotenv --no-compile-autoload-bunfig \
+    src/cli.ts --outfile "$OUT/$output"
 done
 
 native="$OUT/tikr-macos-arm64"

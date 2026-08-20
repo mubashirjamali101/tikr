@@ -72,7 +72,16 @@ describe('launchd plist', () => {
 describe('daemonInvocation', () => {
   it('detects bun compile URLs so startup jobs skip the virtual entry script', () => {
     expect(isEmbeddedBinary('file:///$bunfs/cli.js')).toBe(true)
+    expect(isEmbeddedBinary('file:///B:/~BUN/root/cli.js')).toBe(true)
     expect(isEmbeddedBinary('file:///Users/me/tikr/dist/cli.js')).toBe(false)
+  })
+
+  it('(bug) treats a binary named tikr as compiled even without $bunfs in import.meta.url', () => {
+    // Linux install: bun cross-compile reported the executable path, not $bunfs. Passing
+    // ../cli.js as argv then printed `error: Script not found` and `tikr start` aborted.
+    expect(isEmbeddedBinary('file:///usr/local/bin/tikr', '/usr/local/bin/tikr')).toBe(true)
+    expect(isEmbeddedBinary('file:///C:/tikr.exe', 'C:\\Users\\me\\tikr.exe')).toBe(true)
+    expect(isEmbeddedBinary('file:///home/me/tikr/dist/cli.js', '/usr/bin/node')).toBe(false)
   })
 
   it('under Node, re-launches via execPath plus the real entry script', () => {
@@ -82,6 +91,15 @@ describe('daemonInvocation', () => {
     expect(argv).toContain('--otlp')
     expect(argv.some((part) => part.includes('$bunfs'))).toBe(false)
     expect(argv[1]?.endsWith('cli.js') || argv[1]?.endsWith('cli.ts')).toBe(true)
+  })
+
+  it('re-launches a compiled binary as itself, with no phantom .js on argv', () => {
+    const argv = daemonInvocation(
+      { intervalSeconds: 15, otlp: true },
+      '/home/me/.local/bin/tikr',
+      'file:///home/me/.local/bin/tikr',
+    )
+    expect(argv).toEqual(['/home/me/.local/bin/tikr', 'daemon', '--interval', '15', '--otlp'])
   })
 })
 
@@ -98,5 +116,12 @@ describe('systemd unit', () => {
 
   it('sets the state directory explicitly, since user units inherit no shell environment', () => {
     expect(unitFor(30)).toContain('Environment=TIKR_HOME=')
+  })
+
+  it('(bug) does not put a bun virtual path on ExecStart', () => {
+    const unit = unitFor(15, true)
+    expect(unit).not.toContain('$bunfs')
+    expect(unit).toContain('daemon --interval 15')
+    expect(unit).toContain('--otlp')
   })
 })
