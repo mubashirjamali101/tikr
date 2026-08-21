@@ -1,10 +1,9 @@
 name: npm publish
 
-# Publishes the JS package to npm when a version tag is pushed.
+# Off until NPM_TOKEN is set (last run failed with ENEEDAUTH).
+# Restore `push: tags: ["v*"]` when publishing to npm again.
 # Requires repo secret NPM_TOKEN (npm automation token — bypasses 2FA OTP).
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
 
 concurrency:
